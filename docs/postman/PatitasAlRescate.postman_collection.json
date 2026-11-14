@@ -1,0 +1,272 @@
+{
+  "info": {
+    "name": "Patitas al Rescate - JWT",
+    "description": "Taller Parte 1: registro con BCrypt, login con JWT de 30 minutos y perfil protegido manualmente. La petición de login guarda {{token}} y {{tokenAlterado}} como variables de colección.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "tokenAlterado",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Hito 1 y 2 - Registro",
+      "item": [
+        {
+          "name": "Registrar adoptante (USER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"adoptante_pedro\",\n  \"password\": \"mi_clave_secreta_123\",\n  \"rol\": \"USER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/registrar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "registrar"
+              ]
+            },
+            "description": "Crea un adoptante. La contraseña se persiste como hash BCrypt (Hito 2)."
+          },
+          "response": []
+        },
+        {
+          "name": "Registrar voluntario (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"voluntario_carlos\",\n  \"password\": \"mi_clave_secreta_123\",\n  \"rol\": \"ADMIN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/registrar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "registrar"
+              ]
+            },
+            "description": "Crea el voluntario administrativo. Verifique en pgAdmin que el hash empiece con $2a$."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Hito 3 - Login",
+      "item": [
+        {
+          "name": "Login voluntario (guarda el token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "",
+                  "pm.test('Login exitoso con JWT de 30 minutos', function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "    pm.expect(data.token).to.be.a('string');",
+                  "    pm.expect(data.token.split('.').length).to.eql(3);",
+                  "    pm.expect(data.rol).to.eql('ADMIN');",
+                  "    pm.expect(data.validezSegundos).to.eql(1800);",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('token', data.token);",
+                  "",
+                  "// Copia con un solo carácter alterado para probar el 401 del Hito 4.",
+                  "const posicion = data.token.lastIndexOf('.') + 3;",
+                  "const original = data.token.charAt(posicion);",
+                  "const reemplazo = original === 'a' ? 'b' : 'a';",
+                  "const alterado = data.token.substring(0, posicion) + reemplazo + data.token.substring(posicion + 1);",
+                  "pm.collectionVariables.set('tokenAlterado', alterado);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"voluntario_carlos\",\n  \"password\": \"mi_clave_secreta_123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Autentica y devuelve el JWT. El script de test guarda {{token}} y {{tokenAlterado}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Login adoptante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"adoptante_pedro\",\n  \"password\": \"mi_clave_secreta_123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login del adoptante. Devuelve un JWT con rol USER."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Hito 4 - Perfil protegido",
+      "item": [
+        {
+          "name": "Perfil ADMIN (token válido)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/perfil",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "perfil"
+              ]
+            },
+            "description": "Debe responder 200 OK con el saludo del panel de administración."
+          },
+          "response": []
+        },
+        {
+          "name": "Perfil con token alterado (401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAlterado}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/perfil",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "perfil"
+              ]
+            },
+            "description": "Debe responder 401 Unauthorized porque la firma HMAC ya no coincide."
+          },
+          "response": []
+        },
+        {
+          "name": "Perfil sin Authorization (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/perfil",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "perfil"
+              ]
+            },
+            "description": "Debe responder 401 Unauthorized por cabecera ausente."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
